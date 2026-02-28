@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaussian Naive Bayes &mdash; ML Zoo</title>
+    <meta name="description" content="Interactive deep-dive into Gaussian Naive Bayes with 2D Gaussian contour visualisation and Bayes decision boundary.">
+
+    <style>
+        :root {
+            --bg-primary:#0d1117;--bg-secondary:#161b22;--bg-card:#1c2128;
+            --bg-card-hover:#272d36;--bg-input:#21262d;
+            --text-primary:#e6edf3;--text-secondary:#8b949e;--text-muted:#6e7681;
+            --text-link:#58a6ff;--border-default:#30363d;--border-muted:#21262d;
+            --radius-sm:6px;--radius-md:10px;--transition:.2s ease;
+        }
+        :root[data-theme="light"] {
+            --bg-primary:#ffffff;--bg-secondary:#f6f8fa;--bg-card:#ffffff;
+            --bg-card-hover:#f3f4f6;--bg-input:#f6f8fa;
+            --text-primary:#1f2328;--text-secondary:#656d76;--text-muted:#8b949e;
+            --text-link:#0969da;--border-default:#d0d7de;--border-muted:#d8dee4;
+        }
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+             color:var(--text-primary);background:var(--bg-primary);-webkit-font-smoothing:antialiased;
+             line-height:1.6}
+    </style>
+    <link rel="stylesheet" href="../../css/model.css">
+
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="model-page">
+
+        <!-- Navigation -->
+        <nav class="model-nav">
+            <a href="../../../../" class="model-nav__back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to ML Zoo
+            </a>
+        </nav>
+
+        <!-- Hero -->
+        <section class="model-hero">
+            <h1 class="model-hero__title">Gaussian Naive Bayes</h1>
+            <div class="model-hero__meta">
+                <span class="model-hero__badge" style="background:#3fb950;color:#fff">Classification</span>
+                <span class="model-hero__badge" style="background:rgba(210,168,255,.15);color:#d2a8ff">Probabilistic</span>
+                <span class="model-hero__year">Est. 1960</span>
+            </div>
+            <p class="model-hero__desc">
+                Assumes features are independent and Gaussian-distributed within each class,
+                using Bayes' theorem to compute posterior probabilities for classification.
+            </p>
+        </section>
+
+        <!-- Interactive Diagram -->
+        <div class="model-diagram">
+            <div class="model-diagram__controls">
+                <button class="model-diagram__btn" id="btn-contours">Show Contours</button>
+                <button class="model-diagram__btn" id="btn-regions">Show Regions</button>
+                <button class="model-diagram__btn" onclick="MLZoo.diagram.resetZoom()">Reset View</button>
+            </div>
+            <div id="diagram-container"></div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="model-tabs">
+            <button class="model-tab-btn model-tab-btn--active" data-tab="overview">Overview</button>
+            <button class="model-tab-btn" data-tab="howto">How It Works</button>
+            <button class="model-tab-btn" data-tab="math">Math</button>
+            <button class="model-tab-btn" data-tab="code">Code</button>
+            <button class="model-tab-btn" data-tab="references">References</button>
+        </div>
+
+        <!-- Tab: Overview -->
+        <div class="model-tab-content model-tab-content--active" id="tab-overview">
+            <div class="model-section">
+                <h2>Overview</h2>
+                <p>
+                    Gaussian Naive Bayes (GNB) is one of the simplest and fastest probabilistic classifiers.
+                    It models each class-conditional feature distribution as a univariate Gaussian and applies
+                    the &ldquo;naive&rdquo; assumption that all features are conditionally independent given
+                    the class label. Despite this strong assumption, GNB often performs surprisingly well,
+                    especially when training data is limited.
+                </p>
+                <p>
+                    Training is extremely fast &mdash; it only requires computing the mean and variance of
+                    each feature per class and estimating class priors. Prediction involves evaluating the
+                    Gaussian PDF for each feature and multiplying the results (or summing log-likelihoods).
+                </p>
+
+                <h3>When to Use</h3>
+                <ul>
+                    <li>You need a very fast baseline classifier</li>
+                    <li>Features are approximately continuous and roughly Gaussian within each class</li>
+                    <li>Training data is small and you want to avoid overfitting</li>
+                    <li>Real-time classification with minimal latency</li>
+                </ul>
+
+                <div class="model-proscons">
+                    <div class="model-pros">
+                        <h4>Pros</h4>
+                        <ul>
+                            <li>Extremely fast training and prediction</li>
+                            <li>Works well with small datasets</li>
+                            <li>Outputs calibrated probabilities (when assumptions hold)</li>
+                            <li>No hyperparameter tuning required</li>
+                            <li>Naturally handles multi-class problems</li>
+                        </ul>
+                    </div>
+                    <div class="model-cons">
+                        <h4>Cons</h4>
+                        <ul>
+                            <li>Naive independence assumption is rarely true</li>
+                            <li>Cannot capture feature correlations</li>
+                            <li>Sensitive to features with non-Gaussian distributions</li>
+                            <li>Decision boundaries are always quadratic curves</li>
+                            <li>Feature scaling matters (variance estimates)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: How It Works -->
+        <div class="model-tab-content" id="tab-howto">
+            <div class="model-section">
+                <h2>How It Works</h2>
+                <p>
+                    Gaussian Naive Bayes applies Bayes' theorem to classify new observations.
+                    The model assumes that within each class, each feature follows a Gaussian
+                    (normal) distribution, and features are conditionally independent given the class.
+                </p>
+
+                <h3>Training (Parameter Estimation)</h3>
+                <ol style="color:var(--text-secondary);padding-left:20px;margin-bottom:16px">
+                    <li style="margin-bottom:8px">
+                        <strong>Compute class priors:</strong> Estimate $P(C_k)$ as the fraction of
+                        training samples belonging to class $k$.
+                    </li>
+                    <li style="margin-bottom:8px">
+                        <strong>Compute class-conditional statistics:</strong> For each feature $j$ and
+                        class $k$, compute the sample mean $\mu_{jk}$ and variance $\sigma_{jk}^2$ from
+                        the training points in that class.
+                    </li>
+                </ol>
+
+                <h3>Prediction (MAP Classification)</h3>
+                <ol style="color:var(--text-secondary);padding-left:20px;margin-bottom:16px">
+                    <li style="margin-bottom:8px">
+                        <strong>Compute class-conditional likelihoods:</strong> For each class $k$,
+                        evaluate the Gaussian PDF for each feature and multiply them together (naive
+                        independence assumption).
+                    </li>
+                    <li style="margin-bottom:8px">
+                        <strong>Apply Bayes' theorem:</strong> Multiply the likelihood by the prior
+                        to get the posterior probability for each class.
+                    </li>
+                    <li style="margin-bottom:8px">
+                        <strong>Predict:</strong> Choose the class with the highest posterior probability
+                        (Maximum A Posteriori, or MAP, decision).
+                    </li>
+                </ol>
+
+                <h3>Decision Boundary</h3>
+                <p>
+                    The decision boundary occurs where the posterior probabilities of two classes are
+                    equal. For Gaussian Naive Bayes, this boundary is a quadratic curve in feature space
+                    (a straight line if the variances are equal across classes).
+                </p>
+            </div>
+        </div>
+
+        <!-- Tab: Math -->
+        <div class="model-tab-content" id="tab-math">
+            <div class="model-section">
+                <h2>Key Equations</h2>
+
+                <div class="model-math">
+                    <div class="model-math__label">Bayes' Theorem (Posterior)</div>
+                    <p>$$P(C_k \mid \mathbf{x}) = \frac{P(\mathbf{x} \mid C_k)\, P(C_k)}{P(\mathbf{x})}$$</p>
+                    <p>We classify to the class $k$ that maximises the numerator (the denominator is
+                    constant across classes).</p>
+                </div>
+
+                <div class="model-math">
+                    <div class="model-math__label">Naive Independence Assumption</div>
+                    <p>$$P(\mathbf{x} \mid C_k) = \prod_{j=1}^{d} P(x_j \mid C_k)$$</p>
+                    <p>Each feature $x_j$ is assumed independent of every other feature given the class.</p>
+                </div>
+
+                <div class="model-math">
+                    <div class="model-math__label">Gaussian Class-Conditional PDF</div>
+                    <p>$$P(x_j \mid C_k) = \frac{1}{\sqrt{2\pi\,\sigma_{jk}^2}}\,\exp\!\left(-\frac{(x_j - \mu_{jk})^2}{2\,\sigma_{jk}^2}\right)$$</p>
+                    <p>Where $\mu_{jk}$ and $\sigma_{jk}^2$ are the mean and variance of feature $j$
+                    estimated from class $k$ training data.</p>
+                </div>
+
+                <div class="model-math">
+                    <div class="model-math__label">Log-Likelihood Decision Rule</div>
+                    <p>$$\hat{y} = \arg\max_k \left[\ln P(C_k) + \sum_{j=1}^{d}\left(-\frac{1}{2}\ln(2\pi\sigma_{jk}^2) - \frac{(x_j - \mu_{jk})^2}{2\sigma_{jk}^2}\right)\right]$$</p>
+                    <p>Working in log-space avoids numerical underflow from multiplying many small
+                    probabilities.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Code -->
+        <div class="model-tab-content" id="tab-code">
+            <div class="model-section">
+                <h2>scikit-learn</h2>
+                <div class="model-code">
+                    <div class="model-code__label">Python</div>
+                    <pre><code>from sklearn.naive_bayes import GaussianNB
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
+
+# Split data
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# Fit model — no hyperparameters to tune!
+model = GaussianNB()
+model.fit(X_train, y_train)
+
+# Predict class labels
+y_pred = model.predict(X_test)
+
+# Predict probabilities
+y_proba = model.predict_proba(X_test)
+
+# Evaluate
+print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
+print(classification_report(y_test, y_pred))
+
+# Inspect learned parameters
+print("Class priors:", model.class_prior_)
+print("Class means:\n", model.theta_)
+print("Class variances:\n", model.var_)</code></pre>
+                </div>
+
+                <h2>With Variance Smoothing</h2>
+                <div class="model-code">
+                    <div class="model-code__label">Python</div>
+                    <pre><code># var_smoothing adds a fraction of the largest variance
+# to all variances for numerical stability
+model = GaussianNB(var_smoothing=1e-9)
+model.fit(X_train, y_train)</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: References -->
+        <div class="model-tab-content" id="tab-references">
+            <div class="model-section">
+                <h2>Key References</h2>
+                <ul>
+                    <li>Bayes, T. (1763). An Essay towards solving a Problem in the Doctrine of Chances.
+                        <em>Philosophical Transactions of the Royal Society</em>.</li>
+                    <li>Duda, R. O. &amp; Hart, P. E. (1973). <em>Pattern Classification and Scene Analysis</em>.
+                        Wiley.</li>
+                    <li>Hastie, T., Tibshirani, R. &amp; Friedman, J. <em>The Elements of Statistical Learning</em>,
+                        Chapter 6.6.3.</li>
+                    <li>Zhang, H. (2004). The Optimality of Naive Bayes. <em>FLAIRS Conference</em>.</li>
+                </ul>
+
+                <h3>Related Models</h3>
+                <div class="model-related">
+                    <a href="../multinomial-nb/" class="model-related__link">Multinomial NB</a>
+                    <a href="../bernoulli-nb/" class="model-related__link">Bernoulli NB</a>
+                    <a href="../gmm/" class="model-related__link">Gaussian Mixture Model</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/data.js"></script>
+    <script src="../../js/shared-diagram.js"></script>
+
+    <script>
+    (function () {
+        /* ---------- Theme ---------- */
+        var t = localStorage.getItem('mlzoo_theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+
+        /* ---------- Tab switching ---------- */
+        document.querySelectorAll('.model-tab-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.model-tab-btn').forEach(function (b) {
+                    b.classList.remove('model-tab-btn--active');
+                });
+                document.querySelectorAll('.model-tab-content').forEach(function (c) {
+                    c.classList.remove('model-tab-content--active');
+                });
+                btn.classList.add('model-tab-btn--active');
+                var tab = document.getElementById('tab-' + btn.getAttribute('data-tab'));
+                if (tab) tab.classList.add('model-tab-content--active');
+            });
+        });
+
+        /* ---------- KaTeX auto-render ---------- */
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ]
+                });
+            }
+        });
+
+        /* ---------- Diagram init ---------- */
+        var data = window.MLZoo.modelData;
+        MLZoo.diagram.init('#diagram-container', data.config);
+        MLZoo.diagram.drawPoints(data.points);
+
+        var showContours = false;
+        var showRegions = false;
+
+        function redraw() {
+            MLZoo.diagram.clear();
+            if (showRegions) {
+                MLZoo.diagram.drawRegions(data.classifyFn, { opacity: 0.12 });
+            }
+            if (showContours) {
+                MLZoo.diagram.drawGaussianContours(data.gaussians, { levels: [1, 2, 3] });
+            }
+            MLZoo.diagram.drawPoints(data.points);
+        }
+
+        document.getElementById('btn-contours').addEventListener('click', function () {
+            showContours = !showContours;
+            this.textContent = showContours ? 'Hide Contours' : 'Show Contours';
+            redraw();
+        });
+
+        document.getElementById('btn-regions').addEventListener('click', function () {
+            showRegions = !showRegions;
+            this.textContent = showRegions ? 'Hide Regions' : 'Show Regions';
+            redraw();
+        });
+    })();
+    </script>
+</body>
+</html>

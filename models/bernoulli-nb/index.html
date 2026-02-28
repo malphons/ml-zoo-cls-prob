@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bernoulli Naive Bayes &mdash; ML Zoo</title>
+    <meta name="description" content="Interactive deep-dive into Bernoulli Naive Bayes with binary feature visualization for document classification.">
+    <style>
+        :root{--bg-primary:#0d1117;--bg-secondary:#161b22;--bg-card:#1c2128;--bg-card-hover:#272d36;--bg-input:#21262d;--text-primary:#e6edf3;--text-secondary:#8b949e;--text-muted:#6e7681;--text-link:#58a6ff;--border-default:#30363d;--border-muted:#21262d;--radius-sm:6px;--radius-md:10px;--transition:.2s ease}
+        :root[data-theme="light"]{--bg-primary:#ffffff;--bg-secondary:#f6f8fa;--bg-card:#ffffff;--bg-card-hover:#f3f4f6;--bg-input:#f6f8fa;--text-primary:#1f2328;--text-secondary:#656d76;--text-muted:#8b949e;--text-link:#0969da;--border-default:#d0d7de;--border-muted:#d8dee4}
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--text-primary);background:var(--bg-primary);-webkit-font-smoothing:antialiased;line-height:1.6}
+    </style>
+    <link rel="stylesheet" href="../../css/model.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="model-page">
+        <nav class="model-nav">
+            <a href="../../../../" class="model-nav__back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Back to ML Zoo
+            </a>
+        </nav>
+        <section class="model-hero">
+            <h1 class="model-hero__title">Bernoulli Naive Bayes</h1>
+            <div class="model-hero__meta">
+                <span class="model-hero__badge" style="background:#3fb950;color:#fff">Classification</span>
+                <span class="model-hero__badge" style="background:rgba(210,168,255,.15);color:#d2a8ff">Probabilistic</span>
+                <span class="model-hero__year">Est. 1968</span>
+            </div>
+            <p class="model-hero__desc">Models binary feature presence/absence with Bernoulli distributions, making it ideal for binary bag-of-words text classification and short document filtering.</p>
+        </section>
+        <div class="model-diagram">
+            <div class="model-diagram__controls">
+                <button class="model-diagram__btn" id="btn-importance">Show Feature Importance</button>
+            </div>
+            <div id="diagram-container" style="width:100%;min-height:400px"></div>
+        </div>
+        <div class="model-tabs">
+            <button class="model-tab-btn model-tab-btn--active" data-tab="overview">Overview</button>
+            <button class="model-tab-btn" data-tab="howto">How It Works</button>
+            <button class="model-tab-btn" data-tab="math">Math</button>
+            <button class="model-tab-btn" data-tab="code">Code</button>
+            <button class="model-tab-btn" data-tab="references">References</button>
+        </div>
+        <div class="model-tab-content model-tab-content--active" id="tab-overview">
+            <div class="model-section">
+                <h2>Overview</h2>
+                <p>Bernoulli Naive Bayes (BNB) is designed for binary/boolean features. Unlike Multinomial NB which uses word counts, BNB only cares about whether a word is present (1) or absent (0) in a document. This makes it particularly effective for short texts, binary feature vectors, and boolean attribute data.</p>
+                <p>A key difference from Multinomial NB is that BNB explicitly penalizes the <em>absence</em> of features. If a word that typically appears in spam is missing, BNB considers this as evidence against spam. This makes BNB especially useful for short documents where word absence is informative.</p>
+                <h3>When to Use</h3>
+                <ul>
+                    <li>Short text classification (tweets, SMS, headlines)</li>
+                    <li>Features are binary (word present/absent, boolean attributes)</li>
+                    <li>Word absence is informative for classification</li>
+                    <li>Document length varies significantly across samples</li>
+                </ul>
+                <div class="model-proscons">
+                    <div class="model-pros">
+                        <h4>Pros</h4>
+                        <ul>
+                            <li>Explicitly models word absence (unlike Multinomial NB)</li>
+                            <li>Works well for short documents</li>
+                            <li>Handles binary features naturally</li>
+                            <li>Fast training and prediction</li>
+                            <li>Often outperforms Multinomial NB on small documents</li>
+                        </ul>
+                    </div>
+                    <div class="model-cons">
+                        <h4>Cons</h4>
+                        <ul>
+                            <li>Ignores word frequency information</li>
+                            <li>Naive independence assumption</li>
+                            <li>Can underperform on longer documents</li>
+                            <li>Binary binarization loses information</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-howto">
+            <div class="model-section">
+                <h2>How It Works</h2>
+                <ol style="color:var(--text-secondary);padding-left:20px;margin-bottom:16px">
+                    <li style="margin-bottom:8px"><strong>Binarize features:</strong> Convert all features to binary (0 or 1). For text, this means recording whether each vocabulary word appears in the document, regardless of how many times.</li>
+                    <li style="margin-bottom:8px"><strong>Estimate parameters:</strong> For each feature $j$ and class $k$, estimate $p_{jk} = P(x_j = 1 \mid C_k)$ with Laplace smoothing.</li>
+                    <li style="margin-bottom:8px"><strong>Classify:</strong> For a new binary feature vector, compute the log-posterior for each class using both the presence ($\log p_{jk}$) and absence ($\log(1 - p_{jk})$) terms.</li>
+                </ol>
+                <p>The chart shows per-class feature presence probabilities. Notice how <strong>Spam</strong> documents have high presence probability for promotional words like &ldquo;free&rdquo; and &ldquo;offer&rdquo;, while <strong>Ham</strong> documents show high presence for work-related words.</p>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-math">
+            <div class="model-section">
+                <h2>Key Equations</h2>
+                <div class="model-math"><div class="model-math__label">Bernoulli Likelihood</div><p>$$P(\mathbf{x} \mid C_k) = \prod_{j=1}^{V} p_{jk}^{x_j}(1 - p_{jk})^{(1-x_j)}$$</p><p>where $x_j \in \{0, 1\}$ indicates feature presence.</p></div>
+                <div class="model-math"><div class="model-math__label">Log-Posterior</div><p>$$\log P(C_k \mid \mathbf{x}) \propto \log P(C_k) + \sum_{j=1}^{V}\bigl[x_j \log p_{jk} + (1-x_j)\log(1-p_{jk})\bigr]$$</p></div>
+                <div class="model-math"><div class="model-math__label">Parameter Estimation with Smoothing</div><p>$$\hat{p}_{jk} = \frac{N_{jk} + \alpha}{N_k + 2\alpha}$$</p><p>where $N_{jk}$ is the count of documents in class $k$ containing feature $j$.</p></div>
+                <div class="model-math"><div class="model-math__label">Key Difference from Multinomial NB</div><p>The $(1 - p_{jk})^{(1-x_j)}$ term means absent features contribute to the classification decision. In Multinomial NB, absent words contribute nothing ($\theta_{jk}^0 = 1$).</p></div>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-code">
+            <div class="model-section">
+                <h2>scikit-learn</h2>
+                <div class="model-code"><div class="model-code__label">Python</div>
+                    <pre><code>from sklearn.naive_bayes import BernoulliNB
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score
+
+# Binarize: CountVectorizer with binary=True
+pipeline = Pipeline([
+    ('vectorizer', CountVectorizer(
+        binary=True,  # key: binarize features
+        max_features=10000,
+        stop_words='english'
+    )),
+    ('classifier', BernoulliNB(alpha=1.0))
+])
+
+pipeline.fit(X_train_text, y_train)
+y_pred = pipeline.predict(X_test_text)
+print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
+
+# Binarization threshold (for non-text features)
+model = BernoulliNB(alpha=1.0, binarize=0.5)
+model.fit(X_train, y_train)  # continuous features auto-binarized</code></pre>
+                </div>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-references">
+            <div class="model-section">
+                <h2>Key References</h2>
+                <ul>
+                    <li>McCallum, A. &amp; Nigam, K. (1998). A Comparison of Event Models for Naive Bayes Text Classification. <em>AAAI Workshop</em>.</li>
+                    <li>Manning, C. D., Raghavan, P. &amp; Sch&uuml;tze, H. <em>Introduction to Information Retrieval</em>, Chapter 13.3.</li>
+                    <li>Metsis, V. et al. (2006). Spam Filtering with Naive Bayes &mdash; Which Naive Bayes? <em>CEAS</em>.</li>
+                </ul>
+                <h3>Related Models</h3>
+                <div class="model-related">
+                    <a href="../gaussian-nb/" class="model-related__link">Gaussian NB</a>
+                    <a href="../multinomial-nb/" class="model-related__link">Multinomial NB</a>
+                    <a href="../bayesian-net/" class="model-related__link">Bayesian Network</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/data.js"></script>
+    <script src="../../js/shared-diagram.js"></script>
+    <script>
+    (function () {
+        var t = localStorage.getItem('mlzoo_theme'); if (t) document.documentElement.setAttribute('data-theme', t);
+        document.querySelectorAll('.model-tab-btn').forEach(function (btn) { btn.addEventListener('click', function () { document.querySelectorAll('.model-tab-btn').forEach(function (b) { b.classList.remove('model-tab-btn--active'); }); document.querySelectorAll('.model-tab-content').forEach(function (c) { c.classList.remove('model-tab-content--active'); }); btn.classList.add('model-tab-btn--active'); document.getElementById('tab-' + btn.getAttribute('data-tab')).classList.add('model-tab-content--active'); }); });
+        document.addEventListener('DOMContentLoaded', function () { if (typeof renderMathInElement !== 'undefined') { renderMathInElement(document.body, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] }); } });
+
+        /* ---------- Bar chart visualization ---------- */
+        var data = window.MLZoo.modelData;
+        var container = d3.select('#diagram-container');
+        var margin = { top: 30, right: 30, bottom: 60, left: 50 };
+        var width = 780 - margin.left - margin.right;
+        var height = 400 - margin.top - margin.bottom;
+
+        var svg = container.append('svg')
+            .attr('viewBox', '0 0 780 400')
+            .attr('preserveAspectRatio', 'xMidYMid meet')
+            .style('width', '100%');
+        var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+        var x0 = d3.scaleBand().domain(data.featureNames).range([0, width]).padding(0.2);
+        var x1 = d3.scaleBand().domain(['Spam', 'Ham']).range([0, x0.bandwidth()]).padding(0.05);
+        var y = d3.scaleLinear().domain([0, 1.0]).range([height, 0]);
+        var colors = { Spam: '#f85149', Ham: '#58a6ff' };
+
+        g.append('g').attr('transform', 'translate(0,' + height + ')').call(d3.axisBottom(x0)).selectAll('text').style('fill', 'var(--text-secondary)').style('font-size', '11px');
+        g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d3.format('.0%'))).selectAll('text').style('fill', 'var(--text-secondary)');
+        g.append('text').attr('x', width / 2).attr('y', height + 45).attr('text-anchor', 'middle').style('fill', 'var(--text-muted)').style('font-size', '12px').text('Word Features (Binary Presence)');
+        g.append('text').attr('transform', 'rotate(-90)').attr('x', -height / 2).attr('y', -38).attr('text-anchor', 'middle').style('fill', 'var(--text-muted)').style('font-size', '12px').text('P(present)');
+
+        var showImportance = false;
+
+        function drawBars() {
+            g.selectAll('.bar-group').remove();
+            g.selectAll('.importance-bar').remove();
+
+            if (!showImportance) {
+                var featureGroups = g.selectAll('.bar-group').data(data.featureNames).enter().append('g').attr('class', 'bar-group').attr('transform', function (d) { return 'translate(' + x0(d) + ',0)'; });
+                data.classNames.forEach(function (cls, k) {
+                    featureGroups.append('rect').attr('x', function () { return x1(cls); }).attr('y', function (d) { var idx = data.featureNames.indexOf(d); return y(data.classBernoulliProbs[k][idx]); }).attr('width', x1.bandwidth()).attr('height', function (d) { var idx = data.featureNames.indexOf(d); return height - y(data.classBernoulliProbs[k][idx]); }).attr('fill', colors[cls]).attr('opacity', 0.8);
+                });
+            } else {
+                var impScale = d3.scaleLinear().domain([-4, 4]).range([height, 0]);
+                g.append('line').attr('class', 'importance-bar').attr('x1', 0).attr('x2', width).attr('y1', impScale(0)).attr('y2', impScale(0)).attr('stroke', 'var(--border-default)').attr('stroke-dasharray', '4 2');
+                data.featureImportance.forEach(function (fi) {
+                    var barX = x0(fi.feature) + x0.bandwidth() * 0.15;
+                    var barW = x0.bandwidth() * 0.7;
+                    var barColor = fi.importance > 0 ? '#f85149' : '#58a6ff';
+                    g.append('rect').attr('class', 'importance-bar').attr('x', barX).attr('y', fi.importance > 0 ? impScale(fi.importance) : impScale(0)).attr('width', barW).attr('height', Math.abs(impScale(fi.importance) - impScale(0))).attr('fill', barColor).attr('opacity', 0.8);
+                });
+            }
+        }
+        drawBars();
+
+        var legend = svg.append('g').attr('transform', 'translate(' + (width - 60) + ',10)');
+        ['Spam', 'Ham'].forEach(function (cls, i) {
+            legend.append('rect').attr('x', 0).attr('y', i * 20).attr('width', 12).attr('height', 12).attr('fill', colors[cls]);
+            legend.append('text').attr('x', 18).attr('y', i * 20 + 10).text(cls).style('fill', 'var(--text-secondary)').style('font-size', '12px');
+        });
+
+        document.getElementById('btn-importance').addEventListener('click', function () {
+            showImportance = !showImportance;
+            this.textContent = showImportance ? 'Show Probabilities' : 'Show Feature Importance';
+            drawBars();
+        });
+    })();
+    </script>
+</body>
+</html>

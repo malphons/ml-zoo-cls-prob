@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bayesian Network Classifier &mdash; ML Zoo</title>
+    <meta name="description" content="Interactive deep-dive into Bayesian Network classifiers with conditional dependency structure visualization.">
+    <style>
+        :root{--bg-primary:#0d1117;--bg-secondary:#161b22;--bg-card:#1c2128;--bg-card-hover:#272d36;--bg-input:#21262d;--text-primary:#e6edf3;--text-secondary:#8b949e;--text-muted:#6e7681;--text-link:#58a6ff;--border-default:#30363d;--border-muted:#21262d;--radius-sm:6px;--radius-md:10px;--transition:.2s ease}
+        :root[data-theme="light"]{--bg-primary:#ffffff;--bg-secondary:#f6f8fa;--bg-card:#ffffff;--bg-card-hover:#f3f4f6;--bg-input:#f6f8fa;--text-primary:#1f2328;--text-secondary:#656d76;--text-muted:#8b949e;--text-link:#0969da;--border-default:#d0d7de;--border-muted:#d8dee4}
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--text-primary);background:var(--bg-primary);-webkit-font-smoothing:antialiased;line-height:1.6}
+    </style>
+    <link rel="stylesheet" href="../../css/model.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="model-page">
+        <nav class="model-nav">
+            <a href="../../../../" class="model-nav__back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Back to ML Zoo
+            </a>
+        </nav>
+        <section class="model-hero">
+            <h1 class="model-hero__title">Bayesian Network Classifier</h1>
+            <div class="model-hero__meta">
+                <span class="model-hero__badge" style="background:#3fb950;color:#fff">Classification</span>
+                <span class="model-hero__badge" style="background:rgba(210,168,255,.15);color:#d2a8ff">Probabilistic</span>
+                <span class="model-hero__year">Est. 1988</span>
+            </div>
+            <p class="model-hero__desc">Encodes conditional dependencies between features as a directed acyclic graph (DAG), relaxing the naive independence assumption to capture feature interactions for more accurate probabilistic classification.</p>
+        </section>
+        <div class="model-diagram">
+            <div class="model-diagram__controls">
+                <button class="model-diagram__btn" id="btn-regions">Show Regions</button>
+                <button class="model-diagram__btn" id="btn-compare">Compare Naive Bayes</button>
+                <button class="model-diagram__btn" onclick="MLZoo.diagram.resetZoom()">Reset View</button>
+            </div>
+            <div id="diagram-container"></div>
+        </div>
+        <div class="model-tabs">
+            <button class="model-tab-btn model-tab-btn--active" data-tab="overview">Overview</button>
+            <button class="model-tab-btn" data-tab="howto">How It Works</button>
+            <button class="model-tab-btn" data-tab="math">Math</button>
+            <button class="model-tab-btn" data-tab="code">Code</button>
+            <button class="model-tab-btn" data-tab="references">References</button>
+        </div>
+        <div class="model-tab-content model-tab-content--active" id="tab-overview">
+            <div class="model-section">
+                <h2>Overview</h2>
+                <p>Bayesian Network Classifiers extend Naive Bayes by allowing features to have conditional dependencies, represented as edges in a directed acyclic graph (DAG). While Naive Bayes assumes all features are independent given the class, a Bayesian Network can model that feature $X_2$ depends on both the class and feature $X_1$.</p>
+                <p>This richer dependency structure often leads to better calibrated probabilities and more accurate classification, especially when features have genuine interactions. Popular variants include Tree-Augmented Naive Bayes (TAN), which adds a maximum spanning tree of feature dependencies on top of the Naive Bayes structure.</p>
+                <h3>When to Use</h3>
+                <ul>
+                    <li>Features have known or learnable conditional dependencies</li>
+                    <li>Naive independence assumption is clearly violated</li>
+                    <li>You need interpretable probabilistic reasoning</li>
+                    <li>Domain knowledge suggests specific causal or dependency structures</li>
+                </ul>
+                <div class="model-proscons">
+                    <div class="model-pros">
+                        <h4>Pros</h4>
+                        <ul>
+                            <li>Captures feature dependencies that Naive Bayes misses</li>
+                            <li>Interpretable graphical structure</li>
+                            <li>Can encode domain knowledge via graph structure</li>
+                            <li>Better calibrated probabilities than Naive Bayes</li>
+                            <li>Supports both discrete and continuous features</li>
+                        </ul>
+                    </div>
+                    <div class="model-cons">
+                        <h4>Cons</h4>
+                        <ul>
+                            <li>Structure learning is NP-hard in general</li>
+                            <li>More parameters to estimate than Naive Bayes</li>
+                            <li>Risk of overfitting with complex structures</li>
+                            <li>Inference can be computationally expensive</li>
+                            <li>Requires more training data for reliable parameter estimation</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-howto">
+            <div class="model-section">
+                <h2>How It Works</h2>
+                <h3>Network Structure</h3>
+                <p>In this demo, the Bayesian Network has the structure:</p>
+                <ul style="color:var(--text-secondary);padding-left:20px;margin-bottom:16px">
+                    <li>Class &rarr; $X_1$ (feature 1 depends on class)</li>
+                    <li>Class &rarr; $X_2$ (feature 2 depends on class)</li>
+                    <li>$X_1$ &rarr; $X_2$ (feature 2 also depends on feature 1)</li>
+                </ul>
+                <h3>Steps</h3>
+                <ol style="color:var(--text-secondary);padding-left:20px;margin-bottom:16px">
+                    <li style="margin-bottom:8px"><strong>Structure learning:</strong> Determine the DAG structure (by domain knowledge, score-based search, or constraint-based methods).</li>
+                    <li style="margin-bottom:8px"><strong>Parameter learning:</strong> Estimate conditional probability distributions (CPDs) for each node given its parents using MLE or Bayesian estimation.</li>
+                    <li style="margin-bottom:8px"><strong>Inference:</strong> For a new observation, compute $P(C \mid X_1, X_2)$ using the chain rule factored according to the DAG structure.</li>
+                </ol>
+                <p>Toggle <strong>Compare Naive Bayes</strong> to overlay the Naive Bayes boundary (which ignores the $X_1 \to X_2$ dependency). Notice how the Bayesian Network's boundary is slightly different due to modeling the conditional dependency.</p>
+                <div id="network-container" style="margin-top:16px;min-height:180px"></div>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-math">
+            <div class="model-section">
+                <h2>Key Equations</h2>
+                <div class="model-math"><div class="model-math__label">Bayesian Network Factorization</div><p>$$P(C, X_1, X_2) = P(C)\, P(X_1 \mid C)\, P(X_2 \mid C, X_1)$$</p><p>The key difference from Naive Bayes: $X_2$ is conditioned on both $C$ and $X_1$.</p></div>
+                <div class="model-math"><div class="model-math__label">Naive Bayes Factorization (for comparison)</div><p>$$P_{\text{NB}}(C, X_1, X_2) = P(C)\, P(X_1 \mid C)\, P(X_2 \mid C)$$</p><p>Naive Bayes drops the $X_1$ dependency in $P(X_2 \mid \cdot)$.</p></div>
+                <div class="model-math"><div class="model-math__label">Classification Rule</div><p>$$\hat{C} = \arg\max_c\; P(C=c)\, P(X_1 \mid C=c)\, P(X_2 \mid C=c, X_1)$$</p></div>
+                <div class="model-math"><div class="model-math__label">Conditional Gaussian CPD</div><p>$$X_2 \mid C=c, X_1 \sim \mathcal{N}(\mu_{2c} + \beta \cdot X_1,\; \sigma_2^2)$$</p><p>The coefficient $\beta$ captures the linear dependency of $X_2$ on $X_1$.</p></div>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-code">
+            <div class="model-section">
+                <h2>pgmpy (Python)</h2>
+                <div class="model-code"><div class="model-code__label">Python</div>
+                    <pre><code>from pgmpy.models import BayesianNetwork
+from pgmpy.estimators import MaximumLikelihoodEstimator
+from pgmpy.inference import VariableElimination
+import pandas as pd
+
+# Define network structure (DAG)
+model = BayesianNetwork([
+    ('Class', 'X1'),
+    ('Class', 'X2'),
+    ('X1', 'X2')  # feature dependency
+])
+
+# Learn parameters from data
+df = pd.DataFrame({'Class': y, 'X1': X[:, 0], 'X2': X[:, 1]})
+model.fit(df, estimator=MaximumLikelihoodEstimator)
+
+# Inference
+infer = VariableElimination(model)
+result = infer.query(
+    variables=['Class'],
+    evidence={'X1': 5.0, 'X2': 3.0}
+)
+print(result)</code></pre>
+                </div>
+                <h2>scikit-learn (Tree-Augmented NB approximation)</h2>
+                <div class="model-code"><div class="model-code__label">Python</div>
+                    <pre><code># scikit-learn does not have a built-in Bayesian Network classifier,
+# but you can approximate TAN with feature engineering:
+from sklearn.naive_bayes import GaussianNB
+import numpy as np
+
+# Add interaction features to capture dependencies
+X_augmented = np.column_stack([
+    X_train,
+    X_train[:, 0] * X_train[:, 1]  # interaction term
+])
+
+model = GaussianNB()
+model.fit(X_augmented, y_train)</code></pre>
+                </div>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-references">
+            <div class="model-section">
+                <h2>Key References</h2>
+                <ul>
+                    <li>Pearl, J. (1988). <em>Probabilistic Reasoning in Intelligent Systems</em>. Morgan Kaufmann.</li>
+                    <li>Friedman, N., Geiger, D. &amp; Goldszmidt, M. (1997). Bayesian Network Classifiers. <em>Machine Learning</em>, 29(2&ndash;3), 131&ndash;163.</li>
+                    <li>Koller, D. &amp; Friedman, N. (2009). <em>Probabilistic Graphical Models</em>. MIT Press.</li>
+                </ul>
+                <h3>Related Models</h3>
+                <div class="model-related">
+                    <a href="../gaussian-nb/" class="model-related__link">Gaussian NB</a>
+                    <a href="../multinomial-nb/" class="model-related__link">Multinomial NB</a>
+                    <a href="../gmm/" class="model-related__link">Gaussian Mixture Model</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/data.js"></script>
+    <script src="../../js/shared-diagram.js"></script>
+    <script>
+    (function () {
+        var t = localStorage.getItem('mlzoo_theme'); if (t) document.documentElement.setAttribute('data-theme', t);
+        document.querySelectorAll('.model-tab-btn').forEach(function (btn) { btn.addEventListener('click', function () { document.querySelectorAll('.model-tab-btn').forEach(function (b) { b.classList.remove('model-tab-btn--active'); }); document.querySelectorAll('.model-tab-content').forEach(function (c) { c.classList.remove('model-tab-content--active'); }); btn.classList.add('model-tab-btn--active'); document.getElementById('tab-' + btn.getAttribute('data-tab')).classList.add('model-tab-content--active'); }); });
+        document.addEventListener('DOMContentLoaded', function () { if (typeof renderMathInElement !== 'undefined') { renderMathInElement(document.body, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] }); } });
+
+        var data = window.MLZoo.modelData;
+        MLZoo.diagram.init('#diagram-container', data.config);
+        MLZoo.diagram.drawPoints(data.points);
+
+        var showRegions = false, showNaive = false;
+        function redraw() {
+            MLZoo.diagram.clear();
+            if (showRegions) MLZoo.diagram.drawRegions(data.classifyFn, { opacity: 0.12 });
+            if (showNaive) MLZoo.diagram.drawRegions(data.classifyNaiveFn, { opacity: 0.08, colors: ['#f0883e', '#a371f7'] });
+            MLZoo.diagram.drawPoints(data.points);
+        }
+        redraw();
+        document.getElementById('btn-regions').addEventListener('click', function () { showRegions = !showRegions; this.textContent = showRegions ? 'Hide Regions' : 'Show Regions'; redraw(); });
+        document.getElementById('btn-compare').addEventListener('click', function () { showNaive = !showNaive; this.textContent = showNaive ? 'Hide Naive Bayes' : 'Compare Naive Bayes'; redraw(); });
+
+        /* ---------- Draw network DAG in How It Works tab ---------- */
+        document.addEventListener('DOMContentLoaded', function () {
+            var nc = d3.select('#network-container');
+            if (!nc.node()) return;
+            var nsvg = nc.append('svg').attr('viewBox', '0 0 400 160').attr('preserveAspectRatio', 'xMidYMid meet').style('width', '100%').style('max-width', '400px');
+
+            /* Arrowhead marker */
+            nsvg.append('defs').append('marker').attr('id', 'arrowhead').attr('viewBox', '0 0 10 7').attr('refX', 10).attr('refY', 3.5).attr('markerWidth', 8).attr('markerHeight', 6).attr('orient', 'auto').append('polygon').attr('points', '0 0, 10 3.5, 0 7').attr('fill', '#d2a8ff');
+
+            var nodes = [
+                { id: 'C', label: 'Class', x: 200, y: 30 },
+                { id: 'X1', label: 'X\u2081', x: 100, y: 120 },
+                { id: 'X2', label: 'X\u2082', x: 300, y: 120 }
+            ];
+            var edges = [
+                { from: 'C', to: 'X1' }, { from: 'C', to: 'X2' }, { from: 'X1', to: 'X2' }
+            ];
+
+            function nodePos(id) { return nodes.find(function (n) { return n.id === id; }); }
+            edges.forEach(function (e) {
+                var s = nodePos(e.from), t = nodePos(e.to);
+                var dx = t.x - s.x, dy = t.y - s.y, len = Math.sqrt(dx * dx + dy * dy);
+                var off = 22;
+                nsvg.append('line')
+                    .attr('x1', s.x + dx / len * off).attr('y1', s.y + dy / len * off)
+                    .attr('x2', t.x - dx / len * off).attr('y2', t.y - dy / len * off)
+                    .attr('stroke', '#d2a8ff').attr('stroke-width', 2).attr('marker-end', 'url(#arrowhead)');
+            });
+            nodes.forEach(function (n) {
+                nsvg.append('circle').attr('cx', n.x).attr('cy', n.y).attr('r', 20).attr('fill', 'var(--bg-card)').attr('stroke', '#d2a8ff').attr('stroke-width', 2);
+                nsvg.append('text').attr('x', n.x).attr('y', n.y + 5).attr('text-anchor', 'middle').style('fill', 'var(--text-primary)').style('font-size', '13px').style('font-weight', '600').text(n.label);
+            });
+        });
+    })();
+    </script>
+</body>
+</html>

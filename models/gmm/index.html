@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaussian Mixture Model &mdash; ML Zoo</title>
+    <meta name="description" content="Interactive deep-dive into Gaussian Mixture Model (GMM) classification with multi-component Gaussian contour visualization.">
+    <style>
+        :root{--bg-primary:#0d1117;--bg-secondary:#161b22;--bg-card:#1c2128;--bg-card-hover:#272d36;--bg-input:#21262d;--text-primary:#e6edf3;--text-secondary:#8b949e;--text-muted:#6e7681;--text-link:#58a6ff;--border-default:#30363d;--border-muted:#21262d;--radius-sm:6px;--radius-md:10px;--transition:.2s ease}
+        :root[data-theme="light"]{--bg-primary:#ffffff;--bg-secondary:#f6f8fa;--bg-card:#ffffff;--bg-card-hover:#f3f4f6;--bg-input:#f6f8fa;--text-primary:#1f2328;--text-secondary:#656d76;--text-muted:#8b949e;--text-link:#0969da;--border-default:#d0d7de;--border-muted:#d8dee4}
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--text-primary);background:var(--bg-primary);-webkit-font-smoothing:antialiased;line-height:1.6}
+    </style>
+    <link rel="stylesheet" href="../../css/model.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="model-page">
+        <nav class="model-nav">
+            <a href="../../../../" class="model-nav__back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Back to ML Zoo
+            </a>
+        </nav>
+        <section class="model-hero">
+            <h1 class="model-hero__title">Gaussian Mixture Model</h1>
+            <div class="model-hero__meta">
+                <span class="model-hero__badge" style="background:#3fb950;color:#fff">Classification</span>
+                <span class="model-hero__badge" style="background:rgba(210,168,255,.15);color:#d2a8ff">Probabilistic</span>
+                <span class="model-hero__year">Est. 1977</span>
+            </div>
+            <p class="model-hero__desc">Models each class as a mixture of Gaussian components, capturing complex multi-modal distributions and non-linear decision boundaries through the Expectation-Maximization algorithm.</p>
+        </section>
+        <div class="model-diagram">
+            <div class="model-diagram__controls">
+                <button class="model-diagram__btn" id="btn-contours">Show Contours</button>
+                <button class="model-diagram__btn" id="btn-regions">Show Regions</button>
+                <button class="model-diagram__btn" onclick="MLZoo.diagram.resetZoom()">Reset View</button>
+            </div>
+            <div id="diagram-container"></div>
+        </div>
+        <div class="model-tabs">
+            <button class="model-tab-btn model-tab-btn--active" data-tab="overview">Overview</button>
+            <button class="model-tab-btn" data-tab="howto">How It Works</button>
+            <button class="model-tab-btn" data-tab="math">Math</button>
+            <button class="model-tab-btn" data-tab="code">Code</button>
+            <button class="model-tab-btn" data-tab="references">References</button>
+        </div>
+        <div class="model-tab-content model-tab-content--active" id="tab-overview">
+            <div class="model-section">
+                <h2>Overview</h2>
+                <p>Gaussian Mixture Models (GMMs) represent the probability density of each class as a weighted sum of Gaussian components. This allows GMMs to capture complex, multi-modal distributions that a single Gaussian cannot represent &mdash; for instance, when one class has multiple clusters in feature space.</p>
+                <p>GMMs are generative models: they model the full joint distribution $P(x, y)$ rather than just the discriminative boundary. This enables density estimation, anomaly detection, and data generation in addition to classification. Parameters are estimated using the Expectation-Maximization (EM) algorithm.</p>
+                <h3>When to Use</h3>
+                <ul>
+                    <li>Class distributions are multi-modal (multiple clusters per class)</li>
+                    <li>You need density estimation alongside classification</li>
+                    <li>You want soft (probabilistic) cluster assignments</li>
+                    <li>Data has elliptical cluster shapes at various orientations</li>
+                </ul>
+                <div class="model-proscons">
+                    <div class="model-pros">
+                        <h4>Pros</h4>
+                        <ul>
+                            <li>Captures multi-modal class distributions</li>
+                            <li>Provides soft probabilistic assignments</li>
+                            <li>Flexible covariance structures (spherical, diagonal, full)</li>
+                            <li>Generative model enables density estimation</li>
+                            <li>Well-founded statistical framework</li>
+                        </ul>
+                    </div>
+                    <div class="model-cons">
+                        <h4>Cons</h4>
+                        <ul>
+                            <li>Must choose number of components K</li>
+                            <li>EM can converge to local optima</li>
+                            <li>Sensitive to initialization</li>
+                            <li>Can overfit with too many components</li>
+                            <li>Assumes Gaussian component shapes</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-howto">
+            <div class="model-section">
+                <h2>How It Works</h2>
+                <h3>EM Algorithm</h3>
+                <ol style="color:var(--text-secondary);padding-left:20px;margin-bottom:16px">
+                    <li style="margin-bottom:8px"><strong>Initialize:</strong> Set initial means, covariances, and mixing weights for $K$ Gaussian components (e.g., via k-means).</li>
+                    <li style="margin-bottom:8px"><strong>E-step (Expectation):</strong> Compute the responsibility $\gamma_{ik}$ that component $k$ takes for data point $i$: the posterior probability that point $i$ was generated by component $k$.</li>
+                    <li style="margin-bottom:8px"><strong>M-step (Maximization):</strong> Update the parameters (means, covariances, weights) using the responsibilities as soft assignments.</li>
+                    <li style="margin-bottom:8px"><strong>Repeat</strong> E and M steps until the log-likelihood converges.</li>
+                </ol>
+                <h3>Classification</h3>
+                <p>For classification, fit a separate GMM to each class, then classify a new point by choosing the class whose GMM assigns the highest posterior probability (weighted by the class prior).</p>
+                <p>Toggle <strong>Show Contours</strong> to see the 3 Gaussian components. Notice how class 0 (blue) requires two components to capture its two separate clusters.</p>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-math">
+            <div class="model-section">
+                <h2>Key Equations</h2>
+                <div class="model-math"><div class="model-math__label">Mixture Density</div><p>$$p(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \,\mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)$$</p><p>where $\pi_k$ are mixing weights with $\sum_k \pi_k = 1$.</p></div>
+                <div class="model-math"><div class="model-math__label">E-Step: Responsibilities</div><p>$$\gamma_{ik} = \frac{\pi_k \,\mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)}{\sum_{j=1}^{K} \pi_j \,\mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_j, \boldsymbol{\Sigma}_j)}$$</p></div>
+                <div class="model-math"><div class="model-math__label">M-Step: Parameter Updates</div><p>$$\boldsymbol{\mu}_k^{\text{new}} = \frac{\sum_i \gamma_{ik}\,\mathbf{x}_i}{\sum_i \gamma_{ik}}, \quad \boldsymbol{\Sigma}_k^{\text{new}} = \frac{\sum_i \gamma_{ik}\,(\mathbf{x}_i - \boldsymbol{\mu}_k)(\mathbf{x}_i - \boldsymbol{\mu}_k)^T}{\sum_i \gamma_{ik}}$$</p></div>
+                <div class="model-math"><div class="model-math__label">Log-Likelihood</div><p>$$\mathcal{L} = \sum_{i=1}^{N} \ln\left[\sum_{k=1}^{K} \pi_k \,\mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)\right]$$</p></div>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-code">
+            <div class="model-section">
+                <h2>scikit-learn</h2>
+                <div class="model-code"><div class="model-code__label">Python</div>
+                    <pre><code>from sklearn.mixture import GaussianMixture
+import numpy as np
+
+# Fit GMM per class for classification
+classes = np.unique(y_train)
+gmms = {}
+for c in classes:
+    gmm = GaussianMixture(
+        n_components=2,         # components per class
+        covariance_type='full', # full, tied, diag, spherical
+        max_iter=200,
+        random_state=42
+    )
+    gmm.fit(X_train[y_train == c])
+    gmms[c] = gmm
+
+# Classify by highest log-likelihood
+def predict_gmm(X):
+    log_liks = np.column_stack([
+        gmms[c].score_samples(X) + np.log(np.mean(y_train == c))
+        for c in classes
+    ])
+    return classes[np.argmax(log_liks, axis=1)]
+
+y_pred = predict_gmm(X_test)
+print(f"Accuracy: {np.mean(y_pred == y_test):.4f}")
+
+# Model selection with BIC
+for k in [1, 2, 3, 4]:
+    gmm = GaussianMixture(n_components=k).fit(X_train)
+    print(f"K={k}: BIC={gmm.bic(X_train):.1f}")</code></pre>
+                </div>
+            </div>
+        </div>
+        <div class="model-tab-content" id="tab-references">
+            <div class="model-section">
+                <h2>Key References</h2>
+                <ul>
+                    <li>Dempster, A. P., Laird, N. M. &amp; Rubin, D. B. (1977). Maximum Likelihood from Incomplete Data via the EM Algorithm. <em>JRSS Series B</em>, 39(1), 1&ndash;38.</li>
+                    <li>Bishop, C. M. (2006). <em>Pattern Recognition and Machine Learning</em>, Chapter 9.</li>
+                    <li>McLachlan, G. J. &amp; Peel, D. (2000). <em>Finite Mixture Models</em>. Wiley.</li>
+                </ul>
+                <h3>Related Models</h3>
+                <div class="model-related">
+                    <a href="../gaussian-nb/" class="model-related__link">Gaussian NB</a>
+                    <a href="../multinomial-nb/" class="model-related__link">Multinomial NB</a>
+                    <a href="../bayesian-net/" class="model-related__link">Bayesian Network</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/data.js"></script>
+    <script src="../../js/shared-diagram.js"></script>
+    <script>
+    (function () {
+        var t = localStorage.getItem('mlzoo_theme'); if (t) document.documentElement.setAttribute('data-theme', t);
+        document.querySelectorAll('.model-tab-btn').forEach(function (btn) { btn.addEventListener('click', function () { document.querySelectorAll('.model-tab-btn').forEach(function (b) { b.classList.remove('model-tab-btn--active'); }); document.querySelectorAll('.model-tab-content').forEach(function (c) { c.classList.remove('model-tab-content--active'); }); btn.classList.add('model-tab-btn--active'); document.getElementById('tab-' + btn.getAttribute('data-tab')).classList.add('model-tab-content--active'); }); });
+        document.addEventListener('DOMContentLoaded', function () { if (typeof renderMathInElement !== 'undefined') { renderMathInElement(document.body, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] }); } });
+
+        var data = window.MLZoo.modelData;
+        MLZoo.diagram.init('#diagram-container', data.config);
+        MLZoo.diagram.drawPoints(data.points);
+
+        var showContours = false, showRegions = false;
+        function redraw() {
+            MLZoo.diagram.clear();
+            if (showRegions) MLZoo.diagram.drawRegions(data.classifyFn, { opacity: 0.12 });
+            if (showContours) MLZoo.diagram.drawGaussianContours(data.gaussians, { levels: [1, 2, 3] });
+            MLZoo.diagram.drawPoints(data.points);
+        }
+        redraw();
+        document.getElementById('btn-contours').addEventListener('click', function () { showContours = !showContours; this.textContent = showContours ? 'Hide Contours' : 'Show Contours'; redraw(); });
+        document.getElementById('btn-regions').addEventListener('click', function () { showRegions = !showRegions; this.textContent = showRegions ? 'Hide Regions' : 'Show Regions'; redraw(); });
+    })();
+    </script>
+</body>
+</html>
